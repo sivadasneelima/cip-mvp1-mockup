@@ -68,6 +68,21 @@ export default function AdminMissions() {
                       <Link to={`/admin/gate/${c.id}`} className="text-xs font-medium text-brand-600 hover:underline">
                         Evaluate gate →
                       </Link>
+                    ) : c.status === 'Active' && c.validationMissionId ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <Link
+                          to={`/admin/gate/${c.id}`}
+                          className="text-xs font-medium text-amber-600 hover:underline"
+                        >
+                          Close input &amp; evaluate →
+                        </Link>
+                        <Link
+                          to={`/validation/${c.validationMissionId}`}
+                          className="text-xs font-medium text-ink-400 hover:underline"
+                        >
+                          View mission →
+                        </Link>
+                      </div>
                     ) : c.validationMissionId ? (
                       <Link to={`/validation/${c.validationMissionId}`} className="text-xs font-medium text-ink-500 hover:underline">
                         View mission →

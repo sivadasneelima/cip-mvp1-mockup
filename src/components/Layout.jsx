@@ -1,7 +1,7 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { ROLES } from '../data/mockData.js'
+import { ROLES, getCandidate } from '../data/mockData.js'
 
 const ROLE_ORDER = [
   ROLES.SCOUT,
@@ -29,9 +29,22 @@ function NavItem({ to, children }) {
 }
 
 export default function Layout({ children }) {
-  const { role, setRole, currentUser, toast } = useDemo()
+  const { role, setRole, currentUser, toast, ideationMissions, validationMissions, contributions, candidates } =
+    useDemo()
 
   const isContributor = [ROLES.SCOUT, ROLES.VALIDATOR, ROLES.PREDICTOR, ROLES.DATASET_SUPPLIER].includes(role)
+
+  // Sidebar shortcuts are computed live from context, not hardcoded ids, so a
+  // mission created mid-demo (e.g. via the Ideation triage screen) shows up
+  // here immediately — same data the Dashboard's "pending" cards read from.
+  const openIdeationMissions = ideationMissions.filter((m) => m.status === 'Active' || m.status === 'Triaging')
+
+  const myOpenValidationMissions = validationMissions
+    .filter((vm) => vm.status === 'Active')
+    .filter((vm) => !contributions.some((c) => c.missionId === vm.id && c.contributorId === currentUser.id))
+    .slice(0, 6)
+
+  const gatedCandidates = candidates.filter((c) => c.status === 'Gated').slice(0, 6)
 
   return (
     <div className="min-h-screen bg-ink-50 text-ink-900">
@@ -54,9 +67,26 @@ export default function Layout({ children }) {
             {isContributor && (
               <>
                 <div className="px-3 pb-1 pt-4 section-title">My missions</div>
-                {role === ROLES.SCOUT && <NavItem to="/ideation/IM-1">Ideation: GLP-1 needs</NavItem>}
-                {role !== ROLES.SCOUT && <NavItem to="/validation/VM-101">GLP-1 skin quality</NavItem>}
-                {role !== ROLES.SCOUT && <NavItem to="/validation/VM-102">GLP-1 muscle preservation</NavItem>}
+                {role === ROLES.SCOUT &&
+                  (openIdeationMissions.length === 0 ? (
+                    <p className="px-3 text-xs text-ink-400">No open Ideation Missions.</p>
+                  ) : (
+                    openIdeationMissions.map((m) => (
+                      <NavItem key={m.id} to={`/ideation/${m.id}`}>
+                        {m.title}
+                      </NavItem>
+                    ))
+                  ))}
+                {role !== ROLES.SCOUT &&
+                  (myOpenValidationMissions.length === 0 ? (
+                    <p className="px-3 text-xs text-ink-400">Nothing pending right now.</p>
+                  ) : (
+                    myOpenValidationMissions.map((vm) => (
+                      <NavItem key={vm.id} to={`/validation/${vm.id}`}>
+                        {getCandidate(vm.candidateId)?.title || vm.title}
+                      </NavItem>
+                    ))
+                  ))}
               </>
             )}
 
@@ -71,8 +101,22 @@ export default function Layout({ children }) {
               <>
                 <div className="px-3 pb-1 pt-4 section-title">Admin</div>
                 <NavItem to="/admin/missions">Missions &amp; candidates</NavItem>
-                <NavItem to="/admin/triage/IM-1">Ideation triage</NavItem>
-                <NavItem to="/admin/gate/C-101">Kill-gate queue</NavItem>
+                <div className="px-3 pb-1 pt-4 section-title">Ideation triage</div>
+                {ideationMissions.map((m) => (
+                  <NavItem key={m.id} to={`/admin/triage/${m.id}`}>
+                    {m.title}
+                  </NavItem>
+                ))}
+                <div className="px-3 pb-1 pt-4 section-title">Kill-gate queue</div>
+                {gatedCandidates.length === 0 ? (
+                  <p className="px-3 text-xs text-ink-400">Nothing awaiting determination.</p>
+                ) : (
+                  gatedCandidates.map((c) => (
+                    <NavItem key={c.id} to={`/admin/gate/${c.id}`}>
+                      {c.title}
+                    </NavItem>
+                  ))
+                )}
               </>
             )}
           </nav>

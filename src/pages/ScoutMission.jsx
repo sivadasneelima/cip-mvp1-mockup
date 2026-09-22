@@ -1,13 +1,12 @@
 import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { getIdeationMission } from '../data/mockData.js'
 import { CandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
 import QAThread from '../components/QAThread.jsx'
 
 export default function ScoutMission() {
   const { missionId } = useParams()
-  const { candidates, addScoutCandidate, currentUser } = useDemo()
+  const { candidates, addScoutCandidate, currentUser, getIdeationMission } = useDemo()
   const mission = getIdeationMission(missionId)
 
   const [title, setTitle] = useState('')

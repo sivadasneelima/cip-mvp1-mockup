@@ -1,7 +1,7 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { ROLES, getCandidate } from '../data/mockData.js'
+import { ROLES } from '../data/mockData.js'
 
 const ROLE_ORDER = [
   ROLES.SCOUT,
@@ -29,8 +29,17 @@ function NavItem({ to, children }) {
 }
 
 export default function Layout({ children }) {
-  const { role, setRole, currentUser, toast, ideationMissions, validationMissions, contributions, candidates } =
-    useDemo()
+  const {
+    role,
+    setRole,
+    currentUser,
+    toast,
+    ideationMissions,
+    validationMissions,
+    contributions,
+    candidates,
+    getCandidate,
+  } = useDemo()
 
   const isContributor = [ROLES.SCOUT, ROLES.VALIDATOR, ROLES.PREDICTOR, ROLES.DATASET_SUPPLIER].includes(role)
 

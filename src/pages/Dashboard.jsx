@@ -1,24 +1,22 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { ROLES, getCandidate, getIdeationMission, getValidationMission } from '../data/mockData.js'
+import { ROLES } from '../data/mockData.js'
 import { CandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
 
-function BlockedRoleNotice() {
-  const location = useLocation()
-  const blockedRole = location.state?.blockedRole
-  if (!blockedRole) return null
-  return (
-    <div className="rounded-lg border border-amber-500/40 bg-amber-100 px-4 py-3 text-sm text-amber-600">
-      That screen isn't available to the <strong>{blockedRole}</strong> role — access is scoped per role, the same
-      way the real platform enforces it server-side (PDD Section 7.1). You've been brought back to your dashboard.
-    </div>
-  )
-}
-
 function ContributorDashboard() {
-  const { role, currentUser, candidates, validationMissions, contributions, submissionStatus, ideationMissions } =
-    useDemo()
+  const {
+    role,
+    currentUser,
+    candidates,
+    validationMissions,
+    contributions,
+    submissionStatus,
+    ideationMissions,
+    getCandidate,
+    getValidationMission,
+    getIdeationMission,
+  } = useDemo()
 
   const myContributions = contributions.filter((c) => c.contributorId === currentUser.id || c.role === role)
 
@@ -217,10 +215,7 @@ function AdminDashboard() {
 
 export default function Dashboard() {
   const { role } = useDemo()
-  return (
-    <div className="space-y-4">
-      <BlockedRoleNotice />
-      {role === ROLES.CA ? <CADashboard /> : role === ROLES.ADMIN ? <AdminDashboard /> : <ContributorDashboard />}
-    </div>
-  )
+  if (role === ROLES.CA) return <CADashboard />
+  if (role === ROLES.ADMIN) return <AdminDashboard />
+  return <ContributorDashboard />
 }

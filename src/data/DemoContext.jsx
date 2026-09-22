@@ -190,6 +190,22 @@ export function DemoProvider({ children }) {
     notify('Question posted.')
   }
 
+  // Live lookups — deliberately shadowing the mockData.js helpers of the same
+  // name, which only ever search the original hardcoded seed arrays. Any
+  // record created at runtime (a Scout's Candidate, an Admin-created
+  // Validation Mission) only exists in this context's state, so every screen
+  // must resolve single records through these, not through mockData.js
+  // directly, or lookups for newly created records silently fail.
+  function getCandidate(id) {
+    return candidates.find((c) => c.id === id)
+  }
+  function getValidationMission(id) {
+    return validationMissions.find((m) => m.id === id)
+  }
+  function getIdeationMission(id) {
+    return ideationMissions.find((m) => m.id === id)
+  }
+
   const value = useMemo(
     () => ({
       role,
@@ -197,6 +213,9 @@ export function DemoProvider({ children }) {
       currentUser,
       users,
       ideationMissions,
+      getCandidate,
+      getValidationMission,
+      getIdeationMission,
       candidates,
       validationMissions,
       contributions,

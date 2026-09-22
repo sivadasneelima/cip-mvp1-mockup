@@ -1,13 +1,12 @@
 import React from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { getIdeationMission } from '../data/mockData.js'
 import { CandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
 
 export default function AdminTriage() {
   const { missionId } = useParams()
   const navigate = useNavigate()
-  const { candidates, triageShortlist, triageSuspend, createValidationMission } = useDemo()
+  const { candidates, triageShortlist, triageSuspend, createValidationMission, getIdeationMission } = useDemo()
   const mission = getIdeationMission(missionId)
 
   const pool = candidates.filter((c) => c.parentMissionId === missionId)

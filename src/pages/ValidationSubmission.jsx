@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { ROLES, getCandidate } from '../data/mockData.js'
+import { ROLES } from '../data/mockData.js'
 import { CandidateStatusBadge, Badge, MissionStatusBadge } from '../components/StatusBadge.jsx'
 import QAThread from '../components/QAThread.jsx'
 
@@ -176,7 +176,7 @@ function EvidenceAndConfidence({ evidence, setEvidence, confidence, setConfidenc
 
 export default function ValidationSubmission() {
   const { missionId } = useParams()
-  const { role, validationMissions, contributions, currentUser, submissionStatus } = useDemo()
+  const { role, validationMissions, contributions, currentUser, submissionStatus, getCandidate } = useDemo()
   const [justSubmitted, setJustSubmitted] = useState(false)
 
   const mission = validationMissions.find((m) => m.id === missionId)

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { getCandidate, getUser } from '../data/mockData.js'
+import { getUser } from '../data/mockData.js'
 import { CandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
 
 function median(nums) {
@@ -64,7 +64,7 @@ function TallyBlock({ gate, activeContributions }) {
 export default function AdminKillGate() {
   const { candidateId } = useParams()
   const navigate = useNavigate()
-  const { validationMissions, contributions, recordDetermination, closeInputAndEvaluate } = useDemo()
+  const { validationMissions, contributions, recordDetermination, closeInputAndEvaluate, getCandidate } = useDemo()
   const candidate = getCandidate(candidateId)
   const mission = validationMissions.find((m) => m.candidateId === candidateId)
 

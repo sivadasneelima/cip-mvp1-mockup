@@ -25,7 +25,7 @@ export default function RequireRole({ allow, children }) {
   }, [allowed, role, currentUser.name, allow])
 
   if (!allowed) {
-    return <Navigate to="/" replace state={{ blockedRole: role }} />
+    return <Navigate to="/" replace />
   }
 
   return children

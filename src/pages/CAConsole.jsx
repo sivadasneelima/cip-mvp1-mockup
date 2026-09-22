@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useDemo } from '../data/DemoContext.jsx'
-import { getUser, getCandidate } from '../data/mockData.js'
+import { getUser } from '../data/mockData.js'
 import { Badge, CandidateStatusBadge } from '../components/StatusBadge.jsx'
 
 function statusForContributor(userId, missionId, contributions) {
@@ -10,7 +10,7 @@ function statusForContributor(userId, missionId, contributions) {
 }
 
 export default function CAConsole() {
-  const { validationMissions, contributions } = useDemo()
+  const { validationMissions, contributions, getCandidate } = useDemo()
   const [inviteEmail, setInviteEmail] = useState('')
   const [invited, setInvited] = useState([])
 

@@ -36,7 +36,7 @@ export default function AdminTriage() {
           <div key={c.id} className="card p-4">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs text-ink-400">{c.id}</span>
-              <CandidateStatusBadge status={c.status} />
+              <CandidateStatusBadge candidate={c} />
             </div>
             <div className="text-sm font-medium text-ink-900">{c.title}</div>
             <p className="mt-1 line-clamp-3 text-xs text-ink-500">{c.hypothesis}</p>

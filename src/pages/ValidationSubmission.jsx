@@ -2,10 +2,14 @@ import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
 import { ROLES } from '../data/mockData.js'
-import { CandidateStatusBadge, Badge, MissionStatusBadge } from '../components/StatusBadge.jsx'
+import { MemberCandidateStatusBadge, Badge, MissionStatusBadge } from '../components/StatusBadge.jsx'
 import QAThread from '../components/QAThread.jsx'
 
-const RECOMMENDATION_OPTIONS = ['Advance', 'Do not advance (hold)', 'More evidence is required']
+// PDD 4.3 / 1.4 — the exact four-value set shown to Validators, including
+// Abstain (v1.5): distinct from "More evidence is required", which asserts a
+// view is formable once further evidence exists. Abstain means no view can
+// be formed at all.
+const RECOMMENDATION_OPTIONS = ['Advance', 'Do not advance (hold)', 'More evidence is required', 'Abstain']
 
 function ValidatorForm({ missionId, candidateId, onDone }) {
   const [noise, setNoise] = useState('')
@@ -62,7 +66,11 @@ function ValidatorForm({ missionId, candidateId, onDone }) {
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-ink-400">Shown exactly as worded here — there is no community-member kill option.</p>
+        <p className="mt-1 text-xs text-ink-400">
+          Shown exactly as worded here — there is no community-member kill option. Abstain means you cannot form a
+          view on this Candidate at all; that is different from More evidence is required, which means a view
+          would be formable if more evidence existed.
+        </p>
       </div>
       <EvidenceAndConfidence evidence={evidence} setEvidence={setEvidence} confidence={confidence} setConfidence={setConfidence} />
       <button type="submit" className="btn-primary">Submit assessment</button>
@@ -76,7 +84,8 @@ function PredictorForm({ missionId, candidateId, onDone }) {
   const [rationale, setRationale] = useState('')
   const [confidence, setConfidence] = useState('Medium')
   const [evidence, setEvidence] = useState('')
-  const { addContribution } = useDemo()
+  const { addContribution, getValidationMission } = useDemo()
+  const mission = getValidationMission(missionId)
 
   function submit(e) {
     e.preventDefault()
@@ -93,6 +102,19 @@ function PredictorForm({ missionId, candidateId, onDone }) {
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      {(mission?.forecastResolutionCriteria || mission?.forecastResolutionDate) && (
+        <div className="rounded-lg border border-brand-200 bg-brand-50 p-3">
+          <div className="mb-1 text-xs font-semibold tracking-wide text-brand-700">
+            RESOLUTION CRITERIA &amp; DATE — set by the BioV Admin (PDD 4.5, 4.8)
+          </div>
+          {mission.forecastResolutionCriteria && (
+            <p className="text-sm text-ink-700">{mission.forecastResolutionCriteria}</p>
+          )}
+          {mission.forecastResolutionDate && (
+            <p className="mt-1 text-xs text-ink-500">Resolves by <span className="font-medium text-ink-700">{mission.forecastResolutionDate}</span></p>
+          )}
+        </div>
+      )}
       <div>
         <label className="label">Forecast statement</label>
         <input className="input" value={forecast} onChange={(e) => setForecast(e.target.value)} />
@@ -203,7 +225,7 @@ export default function ValidationSubmission() {
           <p className="mt-2 max-w-2xl text-sm text-ink-600">{candidate.hypothesis}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <CandidateStatusBadge status={candidate.status} />
+          <MemberCandidateStatusBadge candidate={candidate} />
           <MissionStatusBadge status={mission.status} />
         </div>
       </div>
@@ -235,17 +257,41 @@ export default function ValidationSubmission() {
         </div>
 
         <div className="space-y-4">
-          <div className="card p-5">
-            <h2 className="mb-2 text-sm font-semibold text-ink-900">Candidate evidence on file</h2>
-            <p className="text-sm text-ink-600">{candidate.evidence}</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {candidate.tags.map((t) => (
-                <span key={t} className="rounded-full bg-ink-100 px-2 py-0.5 text-xs text-ink-500">
-                  #{t}
-                </span>
-              ))}
+          {(contributorRole === ROLES.VALIDATOR || contributorRole === ROLES.PREDICTOR) && (
+            <div className="card p-5">
+              <div className="mb-2 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-ink-900">Originating hypothesis &amp; evidence</h2>
+                <span className="rounded-full bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-500">Submitted by Scout</span>
+              </div>
+              <p className="mb-2 text-xs text-ink-400">
+                Shown so your assessment is made against the original claim, not a summary. The contributor's
+                identity is not exposed (PDD Section 5.5).
+              </p>
+              <p className="text-sm text-ink-700">{candidate.hypothesis}</p>
+              <p className="mt-2 text-sm text-ink-600">{candidate.evidence}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {candidate.tags.map((t) => (
+                  <span key={t} className="rounded-full bg-ink-100 px-2 py-0.5 text-xs text-ink-500">
+                    #{t}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {contributorRole === ROLES.DATASET_SUPPLIER && (
+            <div className="card p-5">
+              <h2 className="mb-2 text-sm font-semibold text-ink-900">Candidate on file</h2>
+              <p className="text-sm text-ink-600">{candidate.evidence}</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {candidate.tags.map((t) => (
+                  <span key={t} className="rounded-full bg-ink-100 px-2 py-0.5 text-xs text-ink-500">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <QAThread threadKey={mission.id} roleScope={contributorRole} />
         </div>

@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
 import { CandidateStatusBadge, MissionStatusBadge, Badge } from '../components/StatusBadge.jsx'
+import { daysUntil, isMissionOpen } from '../lib/deadlines.js'
 
 export default function AdminMissions() {
   const { ideationMissions, validationMissions, candidates } = useDemo()
@@ -21,20 +22,38 @@ export default function AdminMissions() {
           <button className="btn-secondary text-xs">+ New ideation mission</button>
         </div>
         <div className="card divide-y divide-ink-100">
-          {ideationMissions.map((m) => (
-            <div key={m.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <div className="text-sm font-medium text-ink-900">{m.title}</div>
-                <div className="text-xs text-ink-400">{m.createdDate}</div>
+          {ideationMissions.map((m) => {
+            const open = isMissionOpen(m)
+            const days = daysUntil(m.deadline)
+            return (
+              <div key={m.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <div className="text-sm font-medium text-ink-900">{m.title}</div>
+                  <div className="text-xs text-ink-400">
+                    Created {m.createdDate}
+                    {m.deadline && (
+                      <>
+                        {' · '}
+                        {open ? (
+                          <span className={days <= 2 ? 'font-medium text-amber-600' : ''}>
+                            Deadline {m.deadline} ({days} day{days === 1 ? '' : 's'} left)
+                          </span>
+                        ) : (
+                          <span>Deadline {m.deadline} — passed</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <MissionStatusBadge status={m.status} />
+                  <Link to={`/admin/triage/${m.id}`} className="btn-secondary text-xs">
+                    Open triage
+                  </Link>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <MissionStatusBadge status={m.status} />
-                <Link to={`/admin/triage/${m.id}`} className="btn-secondary text-xs">
-                  Open triage
-                </Link>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -60,7 +79,7 @@ export default function AdminMissions() {
                   </td>
                   <td className="px-4 py-3 text-xs text-ink-500">{c.sourceType}</td>
                   <td className="px-4 py-3">
-                    <CandidateStatusBadge status={c.status} />
+                    <CandidateStatusBadge candidate={c} />
                   </td>
                   <td className="px-4 py-3 text-xs text-ink-500">{c.validationMissionId || '—'}</td>
                   <td className="px-4 py-3 text-right">

@@ -2,7 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
 import { ROLES } from '../data/mockData.js'
-import { CandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
+import { CandidateStatusBadge, MemberCandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
 
 function ContributorDashboard() {
   const {
@@ -83,7 +83,7 @@ function ContributorDashboard() {
               >
                 <div className="mb-1 flex items-center justify-between">
                   <Badge tone="brand">Validation Mission</Badge>
-                  <CandidateStatusBadge status={item.candidate?.status} />
+                  <MemberCandidateStatusBadge candidate={item.candidate} />
                 </div>
                 <div className="text-sm font-medium text-ink-900">{item.candidate?.title}</div>
                 <p className="mt-1 line-clamp-2 text-xs text-ink-500">{item.candidate?.hypothesis}</p>
@@ -191,7 +191,7 @@ function AdminDashboard() {
             {gated.map((c) => (
               <Link key={c.id} to={`/admin/gate/${c.id}`} className="card p-4 hover:border-amber-400 hover:shadow-md">
                 <div className="mb-1 flex items-center justify-between">
-                  <CandidateStatusBadge status={c.status} />
+                  <CandidateStatusBadge candidate={c} />
                   <span className="text-xs text-ink-400">{c.id}</span>
                 </div>
                 <div className="text-sm font-medium text-ink-900">{c.title}</div>

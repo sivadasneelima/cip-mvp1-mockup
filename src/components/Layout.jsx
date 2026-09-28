@@ -2,28 +2,26 @@ import React from 'react'
 import { NavLink } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
 import { ROLES } from '../data/mockData.js'
+import { daysUntil, isMissionOpen } from '../lib/deadlines.js'
 
-const ROLE_ORDER = [
-  ROLES.SCOUT,
-  ROLES.VALIDATOR,
-  ROLES.PREDICTOR,
-  ROLES.DATASET_SUPPLIER,
-  ROLES.CA,
-  ROLES.ADMIN,
-]
-
-function NavItem({ to, children }) {
+function NavItem({ to, children, deadlineOf }) {
+  const badge = deadlineOf
+    ? isMissionOpen(deadlineOf)
+      ? `${daysUntil(deadlineOf.deadline)}d`
+      : 'Closed'
+    : null
   return (
     <NavLink
       to={to}
       end
       className={({ isActive }) =>
-        `block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+        `flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
           isActive ? 'bg-brand-600 text-white' : 'text-ink-600 hover:bg-ink-100'
         }`
       }
     >
-      {children}
+      <span className="min-w-0 truncate">{children}</span>
+      {badge && <span className="shrink-0 text-xs font-normal opacity-70">{badge}</span>}
     </NavLink>
   )
 }
@@ -33,6 +31,7 @@ export default function Layout({ children }) {
     role,
     setRole,
     currentUser,
+    logout,
     toast,
     ideationMissions,
     validationMissions,
@@ -81,7 +80,7 @@ export default function Layout({ children }) {
                     <p className="px-3 text-xs text-ink-400">No open Ideation Missions.</p>
                   ) : (
                     openIdeationMissions.map((m) => (
-                      <NavItem key={m.id} to={`/ideation/${m.id}`}>
+                      <NavItem key={m.id} to={`/ideation/${m.id}`} deadlineOf={m}>
                         {m.title}
                       </NavItem>
                     ))
@@ -91,11 +90,14 @@ export default function Layout({ children }) {
                     <p className="px-3 text-xs text-ink-400">Nothing pending right now.</p>
                   ) : (
                     myOpenValidationMissions.map((vm) => (
-                      <NavItem key={vm.id} to={`/validation/${vm.id}`}>
+                      <NavItem key={vm.id} to={`/validation/${vm.id}`} deadlineOf={vm}>
                         {getCandidate(vm.candidateId)?.title || vm.title}
                       </NavItem>
                     ))
                   ))}
+                {role === ROLES.SCOUT && <NavItem to="/my-hypotheses">My hypotheses</NavItem>}
+                <div className="px-3 pb-1 pt-4 section-title">Account</div>
+                <NavItem to="/profile">Profile</NavItem>
               </>
             )}
 
@@ -103,6 +105,7 @@ export default function Layout({ children }) {
               <>
                 <div className="px-3 pb-1 pt-4 section-title">Community</div>
                 <NavItem to="/ca">Community console</NavItem>
+                <NavItem to="/profile">Profile</NavItem>
               </>
             )}
 
@@ -110,9 +113,10 @@ export default function Layout({ children }) {
               <>
                 <div className="px-3 pb-1 pt-4 section-title">Admin</div>
                 <NavItem to="/admin/missions">Missions &amp; candidates</NavItem>
+                <NavItem to="/admin/contributors">Contributors</NavItem>
                 <div className="px-3 pb-1 pt-4 section-title">Ideation triage</div>
                 {ideationMissions.map((m) => (
-                  <NavItem key={m.id} to={`/admin/triage/${m.id}`}>
+                  <NavItem key={m.id} to={`/admin/triage/${m.id}`} deadlineOf={m}>
                     {m.title}
                   </NavItem>
                 ))}
@@ -142,19 +146,32 @@ export default function Layout({ children }) {
               <div className="truncate text-xs text-ink-500">{currentUser.expertise}</div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="hidden text-xs text-ink-400 sm:inline">Preview as role:</span>
-              <select
-                className="input !w-auto py-1.5 text-sm"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
+            <div className="flex items-center gap-3">
+              {currentUser.roles.length > 1 ? (
+                <div className="flex items-center gap-2">
+                  <span className="hidden text-xs text-ink-400 sm:inline">Acting as:</span>
+                  <select
+                    className="input !w-auto py-1.5 text-sm"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                  >
+                    {currentUser.roles.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <span className="hidden text-xs text-ink-400 sm:inline">{role}</span>
+              )}
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-lg border border-ink-200 px-3 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-100"
               >
-                {ROLE_ORDER.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
+                Log out
+              </button>
             </div>
           </header>
 

@@ -1,8 +1,6 @@
-import React, { createContext, useContext, useMemo, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import {
-  ROLES,
-  users,
-  CURRENT_USER_BY_ROLE,
+  users as seedUsers,
   ideationMissions as seedIdeationMissions,
   candidates as seedCandidates,
   validationMissions as seedValidationMissions,
@@ -12,6 +10,7 @@ import {
 } from './mockData.js'
 
 const DemoContext = createContext(null)
+const SESSION_KEY = 'cip_current_user_id'
 
 let idCounter = 9000
 function nextId(prefix) {
@@ -19,8 +18,26 @@ function nextId(prefix) {
   return `${prefix}-${idCounter}`
 }
 
+function readStoredUserId() {
+  try {
+    return window.localStorage.getItem(SESSION_KEY)
+  } catch {
+    return null
+  }
+}
+
 export function DemoProvider({ children }) {
-  const [role, setRole] = useState(ROLES.SCOUT)
+  const [currentUserId, setCurrentUserId] = useState(readStoredUserId)
+  // Seeded synchronously from the same persisted id so a return visit (page
+  // reload with a session already stored) never renders one frame with a
+  // resolved `currentUser` but a still-null `role` — the effect below only
+  // has to handle role changing after the fact, not priming it on mount.
+  const [role, setRoleState] = useState(() => {
+    const uid = readStoredUserId()
+    const seeded = seedUsers.find((u) => u.id === uid)
+    return seeded ? seeded.roles[0] : null
+  })
+  const [users, setUsers] = useState(seedUsers)
   const [ideationMissions] = useState(seedIdeationMissions)
   const [candidates, setCandidates] = useState(seedCandidates)
   const [validationMissions, setValidationMissions] = useState(seedValidationMissions)
@@ -30,7 +47,14 @@ export function DemoProvider({ children }) {
   const [submissionStatus, setSubmissionStatus] = useState(seedSubmissionStatus)
   const [toast, setToast] = useState(null)
 
-  const currentUser = CURRENT_USER_BY_ROLE[role]
+  // A real login, not a role preview: `currentUserId` is set only by `login`
+  // (PDD magic-link sign-in, stood in for here by an email lookup) and is
+  // resolved against live `users` state every render, same lookup pattern as
+  // every other record in this context. No entry in `users` is ever assumed
+  // to be "the" Scout/Validator/etc. any more — whoever logs in is whoever is
+  // currently acting, which is what makes the deactivation lock-out below
+  // possible to demo at all.
+  const currentUser = users.find((u) => u.id === currentUserId) || null
 
   function notify(message) {
     setToast(message)
@@ -38,7 +62,68 @@ export function DemoProvider({ children }) {
     notify._t = window.setTimeout(() => setToast(null), 3200)
   }
 
-  function addScoutCandidate({ missionId, title, hypothesis, evidence, confidenceLevel }) {
+  function logout() {
+    setCurrentUserId(null)
+    setRoleState(null)
+    try {
+      window.localStorage.removeItem(SESSION_KEY)
+    } catch {
+      /* ignore — demo still works without persisted sessions */
+    }
+  }
+
+  // PDD 4.8 sign-in: in production a one-time magic link; here, looking the
+  // contributor up by the email their invite went to. Returns a status the
+  // Login screen renders copy for, rather than throwing, since "no account"
+  // and "deactivated" are both expected, demo-able outcomes, not errors.
+  function login(email) {
+    const trimmed = (email || '').trim().toLowerCase()
+    const match = users.find((u) => u.email.toLowerCase() === trimmed)
+    if (!match) return { status: 'not-found' }
+    if (match.administrativeStatus === 'Deactivated') return { status: 'deactivated', user: match }
+    setCurrentUserId(match.id)
+    setRoleState(match.roles[0])
+    try {
+      window.localStorage.setItem(SESSION_KEY, match.id)
+    } catch {
+      /* ignore — demo still works without persisted sessions */
+    }
+    setUsers((prev) =>
+      prev.map((u) => (u.id === match.id ? { ...u, lastActive: new Date().toISOString().slice(0, 10) } : u)),
+    )
+    return { status: 'ok', user: match }
+  }
+
+  // A person who holds more than one role (e.g. a Validator who is also a
+  // Predictor) switches which hat they're wearing here — restricted to their
+  // own roles, unlike the old demo-only "preview as any role" switch.
+  function setActingRole(nextRole) {
+    if (!currentUser || !currentUser.roles.includes(nextRole)) return
+    setRoleState(nextRole)
+  }
+
+  // Keeps `role` valid whenever the logged-in identity changes, and signs a
+  // contributor out the moment their own record goes Deactivated — including
+  // an Admin deactivating the very person currently sitting in that seat
+  // during this same demo session (UN-ORG-12 / UN-GEN-18 in action, not just
+  // described in the Contributors screen).
+  useEffect(() => {
+    if (!currentUser) {
+      if (role !== null) setRoleState(null)
+      return
+    }
+    if (currentUser.administrativeStatus === 'Deactivated') {
+      notify(`${currentUser.name}'s access was deactivated — signed out.`)
+      logout()
+      return
+    }
+    if (!role || !currentUser.roles.includes(role)) {
+      setRoleState(currentUser.roles[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, role])
+
+  function addScoutCandidate({ missionId, title, hypothesis, hypothesisType, evidence, evidenceLinks, evidenceFileName, confidenceLevel, tags }) {
     const id = nextId('C')
     const record = {
       id,
@@ -46,10 +131,13 @@ export function DemoProvider({ children }) {
       validationMissionId: null,
       title,
       hypothesis,
+      hypothesisType: hypothesisType || null,
       submittedBy: currentUser.id,
       sourceType: 'Scout-generated',
-      tags: [],
+      tags: tags || [],
       evidence,
+      evidenceLinks: evidenceLinks || [],
+      evidenceFileName: evidenceFileName || null,
       confidenceLevel,
       status: 'Proposed',
       statusReasonCode: null,
@@ -58,6 +146,50 @@ export function DemoProvider({ children }) {
     setCandidates((prev) => [...prev, record])
     notify(`Candidate "${title}" submitted for Admin triage.`)
     return record
+  }
+
+  // Profile screen (PDD 5.7 Contributor record) — merges edits into the
+  // current user's own record. Completing the form for the first time also
+  // moves an Invited contributor to Active, standing in for "registration".
+  function updateProfile(updates) {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== currentUser.id) return u
+        const next = { ...u, ...updates }
+        if (u.administrativeStatus === 'Invited') {
+          next.administrativeStatus = 'Active'
+          next.registeredOn = new Date().toISOString().slice(0, 10)
+        }
+        return next
+      }),
+    )
+    notify('Profile saved.')
+  }
+
+  // Admin action (PDD 4.8 user management / Section 5.7 Deactivated status).
+  // `notify` here means "send the contributor an email" — a checkbox on the
+  // Admin screen, tracked only as a flag on the toast copy: PDD v1.5 has no
+  // such notification, and the User Needs Register (UN-GEN-18) flags that
+  // gap rather than resolving it, so this mockup surfaces the choice without
+  // pretending the underlying email exists.
+  function deactivateContributor(userId, shouldNotify) {
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, administrativeStatus: 'Deactivated' } : u)))
+    const person = users.find((u) => u.id === userId)
+    notify(
+      shouldNotify
+        ? `${person?.name || 'Contributor'} deactivated — notification email queued.`
+        : `${person?.name || 'Contributor'} deactivated — no notification sent (UNR UN-GEN-18: known gap).`,
+    )
+  }
+
+  // Reversing a deactivation (PDD 4.8 / UN-ORG-12: withdrawing access must not
+  // cost the contributor their history) — every Candidate and Contribution
+  // record they authored stays exactly as it was; only administrativeStatus
+  // changes, same as deactivation itself only ever touches that one field.
+  function reactivateContributor(userId) {
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, administrativeStatus: 'Active' } : u)))
+    const person = users.find((u) => u.id === userId)
+    notify(`${person?.name || 'Contributor'} reactivated — full access restored.`)
   }
 
   function addContribution({ missionId, candidateId, role: contribRole, content, evidence, confidenceLevel }) {
@@ -205,13 +337,22 @@ export function DemoProvider({ children }) {
   function getIdeationMission(id) {
     return ideationMissions.find((m) => m.id === id)
   }
+  function getUser(id) {
+    return users.find((u) => u.id === id)
+  }
 
   const value = useMemo(
     () => ({
       role,
-      setRole,
+      setRole: setActingRole,
       currentUser,
+      login,
+      logout,
       users,
+      getUser,
+      updateProfile,
+      deactivateContributor,
+      reactivateContributor,
       ideationMissions,
       getCandidate,
       getValidationMission,
@@ -234,7 +375,7 @@ export function DemoProvider({ children }) {
       resumeMission,
       addQaPost,
     }),
-    [role, currentUser, candidates, validationMissions, contributions, determinations, qaThreads, submissionStatus, toast, ideationMissions],
+    [role, currentUser, users, candidates, validationMissions, contributions, determinations, qaThreads, submissionStatus, toast, ideationMissions],
   )
 
   return <DemoContext.Provider value={value}>{children}</DemoContext.Provider>

@@ -1,7 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDemo } from '../data/DemoContext.jsx'
-import { getUser } from '../data/mockData.js'
 import { CandidateStatusBadge, Badge } from '../components/StatusBadge.jsx'
 
 function median(nums) {
@@ -13,16 +12,19 @@ function median(nums) {
 
 function TallyBlock({ gate, activeContributions }) {
   if (gate.boundField === 'recommendation') {
-    const counts = { Advance: 0, 'Do not advance (hold)': 0, 'More evidence is required': 0 }
+    const counts = { Advance: 0, 'Do not advance (hold)': 0, 'More evidence is required': 0, Abstain: 0 }
     activeContributions.forEach((c) => {
       if (c.content?.recommendation && counts[c.content.recommendation] !== undefined) {
         counts[c.content.recommendation] += 1
       }
     })
-    const total = Object.values(counts).reduce((a, b) => a + b, 0)
+    // Abstain is never counted toward the total, and is displayed as its own
+    // line rather than folded into any other option (PDD 3.4, v1.5).
+    const { Abstain: abstainCount, ...tallied } = counts
+    const total = Object.values(tallied).reduce((a, b) => a + b, 0)
     return (
       <div className="space-y-2">
-        {Object.entries(counts).map(([label, n]) => (
+        {Object.entries(tallied).map(([label, n]) => (
           <div key={label}>
             <div className="mb-1 flex items-center justify-between text-xs text-ink-500">
               <span>{label}</span>
@@ -38,6 +40,10 @@ function TallyBlock({ gate, activeContributions }) {
             </div>
           </div>
         ))}
+        <div className="flex items-center justify-between border-t border-ink-100 pt-2 text-xs text-ink-400">
+          <span>Abstain (excluded from the tally above)</span>
+          <span>{abstainCount}</span>
+        </div>
       </div>
     )
   }
@@ -64,7 +70,7 @@ function TallyBlock({ gate, activeContributions }) {
 export default function AdminKillGate() {
   const { candidateId } = useParams()
   const navigate = useNavigate()
-  const { validationMissions, contributions, recordDetermination, closeInputAndEvaluate, getCandidate } = useDemo()
+  const { validationMissions, contributions, recordDetermination, closeInputAndEvaluate, getCandidate, getUser } = useDemo()
   const candidate = getCandidate(candidateId)
   const mission = validationMissions.find((m) => m.candidateId === candidateId)
 
@@ -103,7 +109,7 @@ export default function AdminKillGate() {
           <h1 className="mt-2 text-xl font-semibold text-ink-900">{candidate.title}</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-600">{candidate.hypothesis}</p>
         </div>
-        <CandidateStatusBadge status={candidate.status} />
+        <CandidateStatusBadge candidate={candidate} />
       </div>
 
       {!canEvaluate && (
@@ -173,7 +179,7 @@ export default function AdminKillGate() {
         <div className="card sticky top-6 h-fit p-5">
           <h2 className="mb-1 text-sm font-semibold text-ink-900">Admin determination</h2>
           <p className="mb-4 text-xs text-ink-500">
-            Internal vocabulary: Advance / Park / Kill. Contributors see these as Advanced / Parked / Not selected.
+            Internal vocabulary: Advance / Park / Kill. Contributors see these as Advanced / Parked / Not Selected.
           </p>
 
           {!canEvaluate ? (
